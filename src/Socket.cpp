@@ -24,7 +24,7 @@ void Socket::bindAddress(const InetAddress &localaddr) {
 }
 
 void Socket::listen() {
-    if(::listen(sockfd_, 1024) != 0) {
+    if(::listen(sockfd_, 65535) != 0) {
         LOG_FATAL("listen sockfd:%d fail, errno=%d \n", sockfd_, errno);
     }
 }

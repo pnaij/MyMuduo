@@ -1,6 +1,5 @@
-aux_source_directory(. EXAMPLE_SRC)
-
-add_executable(testserver ${EXAMPLE_SRC})
+add_executable(testclient testclient.cpp)
+add_executable(testserver testserver.cpp)
 
 target_link_libraries(testserver muduoSelf pthread)
 
