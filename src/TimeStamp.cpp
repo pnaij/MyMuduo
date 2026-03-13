@@ -3,7 +3,7 @@
 //
 
 #include <time.h>
-#include "TimeStamp.h"
+#include "../include/TimeStamp.h"
 
 TimeStamp::TimeStamp() : microSecondsSinceEpoch_(0) {}
 

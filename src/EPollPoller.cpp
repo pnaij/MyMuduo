@@ -2,9 +2,9 @@
 // Created by jianp on 2025/11/21.
 //
 
-#include "EPollPoller.h"
-#include "Logger.h"
-#include "Channel.h"
+#include "../include/EPollPoller.h"
+#include "../include/Logger.h"
+#include "../include/Channel.h"
 
 #include <errno.h>
 #include <unistd.h>

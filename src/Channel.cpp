@@ -2,9 +2,9 @@
 // Created by jianp on 2025/11/21.
 //
 
-#include "Channel.h"
-#include "EventLoop.h"
-#include "Logger.h"
+#include "../include/Channel.h"
+#include "../include/EventLoop.h"
+#include "../include/Logger.h"
 
 #include <sys/epoll.h>
 

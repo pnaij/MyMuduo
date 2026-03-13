@@ -4,8 +4,8 @@
 
 #include <iostream>
 
-#include "TimeStamp.h"
-#include "Logger.h"
+#include "../include/TimeStamp.h"
+#include "../include/Logger.h"
 
 Logger& Logger::instance() {
     static Logger logger;

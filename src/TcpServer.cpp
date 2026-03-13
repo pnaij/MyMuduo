@@ -2,9 +2,9 @@
 // Created by jianp on 2025/12/11.
 //
 
-#include "TcpServer.h"
-#include "Logger.h"
-#include "TcpConnection.h"
+#include "../include/TcpServer.h"
+#include "../include/Logger.h"
+#include "../include/TcpConnection.h"
 
 #include <strings.h>
 #include <functional>

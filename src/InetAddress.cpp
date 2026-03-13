@@ -2,7 +2,7 @@
 // Created by jianp on 2025/11/8.
 //
 
-#include "InetAddress.h"
+#include "../include/InetAddress.h"
 
 #include <strings.h>
 #include <string.h>

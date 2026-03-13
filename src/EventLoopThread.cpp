@@ -2,8 +2,8 @@
 // Created by jianp on 2025/12/9.
 //
 
-#include "EventLoopThread.h"
-#include "EventLoop.h"
+#include "../include/EventLoopThread.h"
+#include "../include/EventLoop.h"
 
 EventLoopThread::EventLoopThread(const EventLoopThread::ThreadInitCallback &cb, const std::string &name)
     : loop_(nullptr)

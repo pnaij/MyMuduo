@@ -2,8 +2,8 @@
 // Created by jianp on 2025/12/9.
 //
 
-#include "Thread.h"
-#include "CurrentThread.h"
+#include "../include/Thread.h"
+#include "../include/CurrentThread.h"
 
 #include <semaphore.h>
 
