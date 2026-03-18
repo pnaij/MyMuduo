@@ -11,7 +11,7 @@
 
 class Buffer {
 public:
-    static const size_t kCheapPrepend = 8;
+    static const size_t kCheapPrepend = 8;      //buffer前面空出来的空间存一些数据
     static const size_t kInitialSize = 1024;
 
     explicit Buffer(size_t initialSize = kInitialSize)
@@ -21,15 +21,15 @@ public:
 
     }
 
-    size_t readableBytes() const {
+    size_t readableBytes() const {//可读空间大小
         return writerIndex_ - readerIndex_;
     }
 
-    size_t writableBytes() const {
+    size_t writableBytes() const {//可写空间大小
         return buffer_.size() - writerIndex_;
     }
 
-    size_t prependableBytes() const {
+    size_t prependableBytes() const {//查看开头有多少数据空间可以利用
         return readerIndex_;
     }
 
@@ -37,7 +37,7 @@ public:
         return begin() + readerIndex_;
     }
 
-    void retrieve(size_t len) {
+    void retrieve(size_t len) {//在buffer中取出len长度的数据，此处只移动游标
         if(len < readableBytes()) {
             readerIndex_ += len;
         }else {
@@ -45,7 +45,7 @@ public:
         }
     }
 
-    void retrieveAll() {
+    void retrieveAll() {//游标移动
         readerIndex_ = writerIndex_ = kCheapPrepend;
     }
 
@@ -59,7 +59,7 @@ public:
         return result;
     }
 
-    void ensureWritableBytes(size_t len) {
+    void ensureWritableBytes(size_t len) {//确保空闲可写空间可以写入len长度大小
         if(writableBytes() < len) {
             makeSpace(len);
         }
@@ -104,6 +104,8 @@ private:
     }
 
     std::vector<char> buffer_;
+
+    //用两个游标来计算读写空间大小
     size_t readerIndex_;
     size_t writerIndex_;
 };

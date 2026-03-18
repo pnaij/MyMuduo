@@ -54,13 +54,13 @@ private:
     static const int kReadEvent;
     static const int kWriteEvent;
 
-    EventLoop *loop_;
+    EventLoop *loop_;   //表示当前channel由那个eventloop负责
     const int fd_;
-    int events_;
-    int revents_;
-    int index_;
+    int events_;        //表示当前fd感兴趣的事件
+    int revents_;       //表示当前fd上实际发生的事件
+    int index_;         //index用来标记当前channel在poller中的状态
 
-    std::weak_ptr<void> tie_;
+    std::weak_ptr<void> tie_;       //channel常与tcpconnection对象绑定，tie用来保证在channel进行事件处理时对应的connection对象没有被析构
     bool tied_;
 
     ReadEventCallback readCallback_;
@@ -68,7 +68,7 @@ private:
     EventCallback closeCallback_;
     EventCallback errorCallback_;
 
-    void update();
+    void update();        //更新channel状态
     void handleEventWithGuard(TimeStamp receiveTime);
 };
 

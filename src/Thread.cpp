@@ -29,11 +29,11 @@ void Thread::start() {
     sem_t sem;
     sem_init(&sem, false, 0);
 
-    thread_ = std::shared_ptr<std::thread>(new std::thread([&]() {
+    thread_ = std::make_shared<std::thread>([&]() {
         tid_ = CurrentThread::tid();
         sem_post(&sem);
         func_();
-    }));
+    });
 
     sem_wait(&sem);
 }

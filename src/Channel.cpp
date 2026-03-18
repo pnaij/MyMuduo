@@ -22,11 +22,11 @@ Channel::~Channel() {
 
 void Channel::handleEvent(TimeStamp receiveTime) {
     if(tied_) {
-        std::shared_ptr<void> guard = tie_.lock();
+        std::shared_ptr<void> guard = tie_.lock();      //通过对tie_提权，如果能获取成功说明对应的connection对象还没被析构
         if(guard) {
             handleEventWithGuard(receiveTime);
         }
-    }else {
+    }else {     //这里主要用来处理不属于tcpconnection的channel
         handleEventWithGuard(receiveTime);
     }
 }

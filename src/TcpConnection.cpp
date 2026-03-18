@@ -34,7 +34,7 @@ TcpConnection::TcpConnection(EventLoop *loop, const std::string &nameArg, int so
                              , channel_(new Channel(loop, sockfd))
                              , localAddr_(localAddr)
                              , peerAddr_(peerAddr)
-                             , highWaterMark_(64 * 1024 * 1024) {
+                             , highWaterMark_(64 * 1024 * 1024) {//高水位线64MB
     channel_->setReadCallback(
             std::bind(&TcpConnection::handleRead, this, std::placeholders::_1)
             );
@@ -198,7 +198,7 @@ void TcpConnection::handleClose() {
     setState(kDisconnected);
     channel_->disableAll();
 
-    TcpConnectionPtr connPtr(shared_from_this());
+    TcpConnectionPtr connPtr(shared_from_this());       //这段话用来为connection对象续命，因为closecallback执行后会删除conn对象，但是conn对象内部还有没执行完的函数
     connectionCallback_(connPtr);
     closeCallback_(connPtr);
 }

@@ -13,11 +13,11 @@
 #include <errno.h>
 #include <memory>
 
-__thread EventLoop *t_loopInThisThread = nullptr;
+__thread EventLoop *t_loopInThisThread = nullptr;       //线程绑定eventloop
 
 const int kPollTimeMs = 10000;
 
-int createEventfd() {
+int createEventfd() {//主要用于创建wakeupFd_用于线程之间的唤醒
     int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if(evtfd < 0) {
         LOG_FATAL("eventfd error:%d\n", errno);

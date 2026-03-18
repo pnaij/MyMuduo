@@ -25,7 +25,7 @@ public:
     EventLoop();
     ~EventLoop();
 
-    void loop();
+    void loop();        //核心函数
     void quit();
 
     TimeStamp pollReturnTime() const { return pollReturnTime_; }
@@ -53,14 +53,14 @@ private:
     const pid_t threadId_;
 
     TimeStamp pollReturnTime_;
-    std::unique_ptr<Poller> poller_;
+    std::unique_ptr<Poller> poller_;        //指向对应的poller
 
-    int wakeupFd_;
+    int wakeupFd_;                          //用来唤醒其他线程
     std::unique_ptr<Channel> wakeupChannel_;
 
     ChannelList activeChannels_;
 
-    std::atomic_bool callingPendingFunctors_;
+    std::atomic_bool callingPendingFunctors_;       //用于表示是否正在执行排队的函数
     std::vector<Functor> pendingFunctors_;
     std::mutex mutex_;
 };
