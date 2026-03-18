@@ -83,10 +83,26 @@ int main() {
 
     // 统计成功连接数
     int success = 0;
-    int n = epoll_wait(epollfd, events, EPOLL_SIZE, 10000); // 等待10秒
-    for (int i = 0; i < n; ++i) {
-        if (events[i].events & EPOLLOUT) {
-            success++;
+    int timeout = 10000; // 总等待时间10秒
+    int interval = 100;  // 每次epoll_wait等待100ms
+    while (timeout > 0 && create_cnt > 0) {
+        int n = epoll_wait(epollfd, events, EPOLL_SIZE, interval);
+        timeout -= interval;
+        for (int i = 0; i < n; ++i) {
+            int fd = events[i].data.fd;
+            if (events[i].events & EPOLLOUT) {
+                // 验证连接是否真的成功（非阻塞connect的关键）
+                int err = 0;
+                socklen_t err_len = sizeof(err);
+                getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &err_len);
+                if (err == 0) {
+                    success++;
+                }
+                // 移除epoll监控，避免重复统计
+                epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
+            } else if (events[i].events & (EPOLLERR | EPOLLHUP)) {
+                epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
+            }
         }
     }
 
