@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(muduoSelf)
+project(jpmuduo)
 
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -std=c++11 -fPIC -O2 -DNDEBUG")
 
@@ -11,7 +11,7 @@ file(GLOB POLLER_SRCS jpmuduo/net/poller/*.cpp)
 file(GLOB INSPECTOR_SRCS jpmuduo/net/inspector/*.cpp)
 file(GLOB BASE_SRCS jpmuduo/base/*.cpp)
 file(GLOB HTTP_SRCS jpmuduo/net/http/*.cpp)
-add_library(muduoSelf SHARED ${NET_SRCS} ${POLLER_SRCS} ${INSPECTOR_SRCS} ${BASE_SRCS} ${HTTP_SRCS})
-target_link_libraries(muduoSelf pthread)
+add_library(jpmuduo SHARED ${NET_SRCS} ${POLLER_SRCS} ${INSPECTOR_SRCS} ${BASE_SRCS} ${HTTP_SRCS})
+target_link_libraries(jpmuduo pthread)
 
 add_subdirectory(examples)
