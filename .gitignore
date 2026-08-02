@@ -1,0 +1,12 @@
+build/
+lib/
+bin/
+*.so
+*.o
+.DS_Store
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
