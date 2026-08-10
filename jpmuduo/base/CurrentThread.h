@@ -12,6 +12,8 @@ namespace jpmuduo
 {
 namespace CurrentThread {
     extern __thread int t_cachedTid;
+    extern __thread char t_tidString[32];
+    extern __thread int t_tidStringLength;
 
     void cacheTid();
 
@@ -21,8 +23,17 @@ namespace CurrentThread {
         }
         return t_cachedTid;
     }
+
+    inline const char* tidString() // for logging
+    {
+        return t_tidString;
+    }
+
+    inline int tidStringLength() // for logging
+    {
+        return t_tidStringLength;
+    }
 };
 }  // namespace jpmuduo
-
 
 #endif //JPMUDUO_CURRENTTHREAD_H
