@@ -5,6 +5,7 @@
 #ifndef JPMUDUO_EVENTLOOP_H
 #define JPMUDUO_EVENTLOOP_H
 
+#include <any>
 #include <functional>
 #include <vector>
 #include <atomic>
@@ -51,6 +52,10 @@ public:
     void removeChannel(Channel *channel);
     bool hasChannel(Channel *channel);
 
+    void setContext(const std::any& context) { context_ = context; }
+    const std::any& getContext() const { return context_; }
+    std::any* getMutableContext() { return &context_; }
+
     void assertInLoopThread() {
         if (!isInLoopThread()) {
             abortNotInLoopThread();
@@ -87,6 +92,8 @@ private:
 
     std::vector<Functor> pendingFunctors_;
     mutable std::mutex mutex_;
+
+    std::any context_;
 };
 
 

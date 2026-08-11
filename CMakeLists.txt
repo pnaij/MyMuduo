@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(jpmuduo)
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -std=c++11 -fPIC -O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -std=c++17 -fPIC -O2 -DNDEBUG")
 
 set(LIBRARY_OUTPUT_PATH  ${PROJECT_SOURCE_DIR}/lib)
 include_directories(${PROJECT_SOURCE_DIR})
