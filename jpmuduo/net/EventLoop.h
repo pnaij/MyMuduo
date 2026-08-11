@@ -34,9 +34,11 @@ public:
     void quit();
 
     TimeStamp pollReturnTime() const { return pollReturnTime_; }
+    int64_t iteration() const { return iteration_; }
 
     void runInLoop(Functor cb);
     void queueInLoop(Functor cb);
+    size_t queueSize() const;
 
     TimerId runAt(TimeStamp time, TimerCallback cb);
     TimerId runAfter(double delay, TimerCallback cb);
@@ -49,17 +51,28 @@ public:
     void removeChannel(Channel *channel);
     bool hasChannel(Channel *channel);
 
+    void assertInLoopThread() {
+        if (!isInLoopThread()) {
+            abortNotInLoopThread();
+        }
+    }
     bool isInLoopThread() const { return threadId_ == CurrentThread::tid(); }
+    bool eventHandling() const { return eventHandling_; }
+
+    static EventLoop* getEventLoopOfCurrentThread();
 
 private:
+    void abortNotInLoopThread();
     void handleRead();
     void doPendingFunctors();
 
     using ChannelList = std::vector<Channel*>;
 
-    std::atomic_bool looping_;
+    bool looping_;
     std::atomic_bool quit_;
-
+    bool eventHandling_;
+    bool callingPendingFunctors_;
+    int64_t iteration_;
     const pid_t threadId_;
 
     TimeStamp pollReturnTime_;
@@ -69,11 +82,11 @@ private:
     int wakeupFd_;                          //用来唤醒线程
     std::unique_ptr<Channel> wakeupChannel_;
 
+    Channel* currentActiveChannel_;
     ChannelList activeChannels_;
 
-    std::atomic_bool callingPendingFunctors_;       //用于表示是否正在执行排队的函数
     std::vector<Functor> pendingFunctors_;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
 };
 
 

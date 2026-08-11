@@ -8,36 +8,61 @@
 #include "jpmuduo/net/Channel.h"
 #include "jpmuduo/net/TimerQueue.h"
 
+#include <assert.h>
+#include <signal.h>
+
 #include <sys/eventfd.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <memory>
+#include <algorithm>
 
 namespace jpmuduo {
 
-__thread EventLoop *t_loopInThisThread = nullptr;       //线程绑定eventloop
+namespace {
+
+__thread EventLoop *t_loopInThisThread = nullptr;
 
 const int kPollTimeMs = 10000;
 
-int createEventfd() {//主要用于创建wakeupFd_用于线程之间的唤醒
+int createEventfd() {
     int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if(evtfd < 0) {
         LOG_FATAL("eventfd error:%d\n", errno);
     }
-
     return evtfd;
+}
+
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+class IgnoreSigPipe {
+public:
+    IgnoreSigPipe() {
+        ::signal(SIGPIPE, SIG_IGN);
+    }
+};
+#pragma GCC diagnostic error "-Wold-style-cast"
+
+IgnoreSigPipe initObj;
+
+}  // unnamed namespace
+
+EventLoop* EventLoop::getEventLoopOfCurrentThread() {
+    return t_loopInThisThread;
 }
 
 EventLoop::EventLoop()
     : looping_(false)
     , quit_(false)
+    , eventHandling_(false)
     , callingPendingFunctors_(false)
+    , iteration_(0)
     , threadId_(CurrentThread::tid())
     , poller_(Poller::newDefaultPoller(this))
     , timerQueue_(new TimerQueue(this))
     , wakeupFd_(createEventfd())
-    , wakeupChannel_(new Channel(this, wakeupFd_)) {
+    , wakeupChannel_(new Channel(this, wakeupFd_))
+    , currentActiveChannel_(nullptr) {
     LOG_DEBUG("EventLoop created %p in thread %d \n", this, threadId_);
     if(t_loopInThisThread) {
         LOG_FATAL("Another EventLoop %p exists in this thread %d \n", t_loopInThisThread, threadId_);
@@ -50,6 +75,8 @@ EventLoop::EventLoop()
 }
 
 EventLoop::~EventLoop() {
+    LOG_DEBUG("EventLoop %p of thread %d destructs in thread %d \n",
+              this, threadId_, CurrentThread::tid());
     wakeupChannel_->disableAll();
     wakeupChannel_->remove();
     ::close(wakeupFd_);
@@ -57,6 +84,8 @@ EventLoop::~EventLoop() {
 }
 
 void EventLoop::loop() {
+    assert(!looping_);
+    assertInLoopThread();
     looping_ = true;
     quit_ = false;
 
@@ -65,9 +94,14 @@ void EventLoop::loop() {
     while(!quit_) {
         activeChannels_.clear();
         pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
+        ++iteration_;
+        eventHandling_ = true;
         for(Channel* channel : activeChannels_) {
+            currentActiveChannel_ = channel;
             channel->handleEvent(pollReturnTime_);
         }
+        currentActiveChannel_ = nullptr;
+        eventHandling_ = false;
         doPendingFunctors();
     }
 
@@ -77,7 +111,6 @@ void EventLoop::loop() {
 
 void EventLoop::quit() {
     quit_ = true;
-
     if(!isInLoopThread()) {
         wakeup();
     }
@@ -100,6 +133,11 @@ void EventLoop::queueInLoop(EventLoop::Functor cb) {
     if(!isInLoopThread() || callingPendingFunctors_) {
         wakeup();
     }
+}
+
+size_t EventLoop::queueSize() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return pendingFunctors_.size();
 }
 
 void EventLoop::handleRead() {
@@ -137,14 +175,24 @@ void EventLoop::cancel(TimerId timerId) {
 }
 
 void EventLoop::updateChannel(Channel *channel) {
+    assert(channel->ownerloop() == this);
+    assertInLoopThread();
     poller_->updateChannel(channel);
 }
 
 void EventLoop::removeChannel(Channel *channel) {
+    assert(channel->ownerloop() == this);
+    assertInLoopThread();
+    if (eventHandling_) {
+        assert(currentActiveChannel_ == channel ||
+               std::find(activeChannels_.begin(), activeChannels_.end(), channel) == activeChannels_.end());
+    }
     poller_->removeChannel(channel);
 }
 
 bool EventLoop::hasChannel(Channel *channel) {
+    assert(channel->ownerloop() == this);
+    assertInLoopThread();
     return poller_->hasChannel(channel);
 }
 
@@ -162,6 +210,12 @@ void EventLoop::doPendingFunctors() {
     }
 
     callingPendingFunctors_ = false;
+}
+
+void EventLoop::abortNotInLoopThread() {
+    LOG_FATAL("EventLoop::abortNotInLoopThread - EventLoop %p "
+              "was created in threadId_ = %d, current thread id = %d \n",
+              this, threadId_, CurrentThread::tid());
 }
 
 }  // namespace jpmuduo
