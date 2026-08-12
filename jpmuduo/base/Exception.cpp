@@ -3,6 +3,8 @@
 //
 
 #include "jpmuduo/base/Exception.h"
+#include "jpmuduo/base/CurrentThread.h"
+
 #include <utility>  // std::move
 
 namespace jpmuduo
@@ -10,8 +12,7 @@ namespace jpmuduo
 
 Exception::Exception(std::string msg)
     : message_(std::move(msg)),
-      stack_()  // TODO: CurrentThread::stackTrace(/*demangle=*/false)
-                // 等实现 CurrentThread::stackTrace 后再接入
+      stack_(CurrentThread::stackTrace(/*demangle=*/false))
 {
 }
 }  // namespace jpmuduo

@@ -5,6 +5,7 @@
 #ifndef JPMUDUO_CURRENTTHREAD_H
 #define JPMUDUO_CURRENTTHREAD_H
 
+#include <string>
 #include <unistd.h>
 #include <sys/syscall.h>
 
@@ -33,6 +34,8 @@ namespace CurrentThread {
     {
         return t_tidStringLength;
     }
+
+    std::string stackTrace(bool demangle);
 };
 }  // namespace jpmuduo
 
