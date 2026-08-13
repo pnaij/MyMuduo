@@ -6,6 +6,7 @@
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/base/Logging.h"
 
+#include <assert.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
 #include <strings.h>
@@ -58,8 +59,15 @@ void TimerQueue::cancel(TimerId timerId) {
         ActiveTimer entry(timerId.timer(), timerId.sequence());
         auto it = activeTimers_.find(entry);
         if (it != activeTimers_.end()) {
-            cancelingTimers_.insert(entry);
+            // 定时器未到期：直接从 timers_ 删除并释放
+            size_t n = timers_.erase(Entry(it->first->expiration(), it->first));
+            assert(n == 1);
+            (void)n;
+            delete it->first;
             activeTimers_.erase(it);
+        } else if (callingExpiredTimers_) {
+            // 定时器回调正在执行中：先打标记，本轮处理结束时再删除
+            cancelingTimers_.insert(entry);
         }
     });
 }
@@ -113,8 +121,6 @@ void TimerQueue::reset(const std::vector<Entry>& expired, TimeStamp now) {
             delete timer;
         }
     }
-
-    cancelingTimers_.clear();
 
     if (!timers_.empty()) {
         resetTimerfd(timers_.begin()->first);

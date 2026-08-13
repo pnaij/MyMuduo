@@ -130,5 +130,19 @@ void AsyncLogging::threadFunc()
     buffersToWrite.clear();
     output.flush();
   }
+  // 退出前把残留在 currentBuffer_/buffers_ 的日志写盘，
+  // 防止 stop() 竞态导致尾部日志丢失（原始 muduo 存在此窗口）
+  {
+    MutexLockGuard lock(mutex_);
+    if (currentBuffer_->length() > 0)
+    {
+      buffers_.push_back(std::move(currentBuffer_));
+    }
+    buffersToWrite.swap(buffers_);
+  }
+  for (const auto& buffer : buffersToWrite)
+  {
+    output.append(buffer->data(), buffer->length());
+  }
   output.flush();
 }

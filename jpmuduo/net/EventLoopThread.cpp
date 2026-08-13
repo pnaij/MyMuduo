@@ -5,6 +5,8 @@
 #include "jpmuduo/net/EventLoopThread.h"
 #include "jpmuduo/net/EventLoop.h"
 
+#include <assert.h>
+
 namespace jpmuduo {
 
 EventLoopThread::EventLoopThread(const EventLoopThread::ThreadInitCallback &cb, const std::string &name)
@@ -26,6 +28,7 @@ EventLoopThread::~EventLoopThread() {
 }
 
 EventLoop* EventLoopThread::startLoop() {
+    assert(!thread_.started());  // 重复调用会销毁 joinable 线程导致 std::terminate
     thread_.start();
 
     EventLoop* loop = nullptr;
