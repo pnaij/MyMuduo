@@ -10,6 +10,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 namespace jpmuduo {
 
@@ -42,16 +43,24 @@ public:
     void disableWriting() { events_ &= ~kWriteEvent; update(); }
     void disableAll() { events_ = kNoneEvent; update(); }
 
-    bool isNoneEvent() { return events_ == kNoneEvent; }
-    bool isWriting() { return events_ & kWriteEvent; }
-    bool isReading() { return events_ & kReadEvent; }
+    bool isNoneEvent() const { return events_ == kNoneEvent; }
+    bool isWriting() const { return events_ & kWriteEvent; }
+    bool isReading() const { return events_ & kReadEvent; }
 
     int index() { return index_; }
     void set_index(int idx) { index_ = idx; }
 
-    EventLoop* ownerloop() { return loop_; }
+    // for debug
+    std::string reventsToString() const;
+    std::string eventsToString() const;
+
+    void doNotLogHup() { logHup_ = false; }
+
+    EventLoop* ownerLoop() { return loop_; }
     void remove();
 private:
+    static std::string eventsToString(int fd, int ev);
+
     static const int kNoneEvent;
     static const int kReadEvent;
     static const int kWriteEvent;
@@ -61,9 +70,12 @@ private:
     int events_;        //表示当前fd感兴趣的事件
     int revents_;       //表示当前fd上实际发生的事件
     int index_;         //index用来标记当前channel在poller中的状态
+    bool logHup_;       //是否打印 HUP 日志（短连接场景可关闭）
 
     std::weak_ptr<void> tie_;       //channel常与tcpconnection对象绑定，tie用来保证在channel进行事件处理时对应的connection对象没有被析构
     bool tied_;
+    bool eventHandling_;    //当前是否正在处理事件
+    bool addedToLoop_;      //是否已加入poller
 
     ReadEventCallback readCallback_;
     EventCallback writeCallback_;

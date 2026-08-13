@@ -3,7 +3,7 @@
 //
 
 #include "jpmuduo/net/EventLoop.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/Poller.h"
 #include "jpmuduo/net/Channel.h"
 #include "jpmuduo/net/TimerQueue.h"
@@ -29,7 +29,7 @@ const int kPollTimeMs = 10000;
 int createEventfd() {
     int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if(evtfd < 0) {
-        LOG_FATAL("eventfd error:%d\n", errno);
+        LOG_SYSFATAL << "eventfd error";
     }
     return evtfd;
 }
@@ -63,9 +63,9 @@ EventLoop::EventLoop()
     , wakeupFd_(createEventfd())
     , wakeupChannel_(new Channel(this, wakeupFd_))
     , currentActiveChannel_(nullptr) {
-    LOG_DEBUG("EventLoop created %p in thread %d \n", this, threadId_);
+    LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
     if(t_loopInThisThread) {
-        LOG_FATAL("Another EventLoop %p exists in this thread %d \n", t_loopInThisThread, threadId_);
+        LOG_FATAL << "Another EventLoop " << t_loopInThisThread << " exists in this thread " << threadId_;
     }else {
         t_loopInThisThread = this;
     }
@@ -75,8 +75,8 @@ EventLoop::EventLoop()
 }
 
 EventLoop::~EventLoop() {
-    LOG_DEBUG("EventLoop %p of thread %d destructs in thread %d \n",
-              this, threadId_, CurrentThread::tid());
+    LOG_DEBUG << "EventLoop " << this << " of thread " << threadId_
+              << " destructs in thread " << CurrentThread::tid();
     wakeupChannel_->disableAll();
     wakeupChannel_->remove();
     ::close(wakeupFd_);
@@ -89,7 +89,7 @@ void EventLoop::loop() {
     looping_ = true;
     quit_ = false;
 
-    LOG_INFO("EventLoop %p start looping \n", this);
+    LOG_INFO << "EventLoop " << this << " start looping";
 
     while(!quit_) {
         activeChannels_.clear();
@@ -105,7 +105,7 @@ void EventLoop::loop() {
         doPendingFunctors();
     }
 
-    LOG_INFO("EventLoop %p stop looping. \n", this);
+    LOG_INFO << "EventLoop " << this << " stop looping.";
     looping_ = false;
 }
 
@@ -144,7 +144,7 @@ void EventLoop::handleRead() {
     uint64_t one = 1;
     ssize_t n = read(wakeupFd_, &one, sizeof(one));
     if(n != sizeof(one)) {
-        LOG_ERROR("EventLoop::handleRead() reads %lu bytes instead of 8 \n", n);
+        LOG_ERROR << "EventLoop::handleRead() reads " << n << " bytes instead of 8";
     }
 }
 
@@ -152,7 +152,7 @@ void EventLoop::wakeup() {
     u_int64_t one = 1;
     ssize_t n = write(wakeupFd_, &one, sizeof(one));
     if(n != sizeof(one)) {
-        LOG_ERROR("EventLoop::wakeup() writes %lu bytes instead of 8 \n", n);
+        LOG_ERROR << "EventLoop::wakeup() writes " << n << " bytes instead of 8";
     }
 }
 
@@ -175,13 +175,13 @@ void EventLoop::cancel(TimerId timerId) {
 }
 
 void EventLoop::updateChannel(Channel *channel) {
-    assert(channel->ownerloop() == this);
+    assert(channel->ownerLoop() == this);
     assertInLoopThread();
     poller_->updateChannel(channel);
 }
 
 void EventLoop::removeChannel(Channel *channel) {
-    assert(channel->ownerloop() == this);
+    assert(channel->ownerLoop() == this);
     assertInLoopThread();
     if (eventHandling_) {
         assert(currentActiveChannel_ == channel ||
@@ -191,7 +191,7 @@ void EventLoop::removeChannel(Channel *channel) {
 }
 
 bool EventLoop::hasChannel(Channel *channel) {
-    assert(channel->ownerloop() == this);
+    assert(channel->ownerLoop() == this);
     assertInLoopThread();
     return poller_->hasChannel(channel);
 }
@@ -213,9 +213,9 @@ void EventLoop::doPendingFunctors() {
 }
 
 void EventLoop::abortNotInLoopThread() {
-    LOG_FATAL("EventLoop::abortNotInLoopThread - EventLoop %p "
-              "was created in threadId_ = %d, current thread id = %d \n",
-              this, threadId_, CurrentThread::tid());
+    LOG_FATAL << "EventLoop::abortNotInLoopThread - EventLoop " << this
+              << " was created in threadId_ = " << threadId_
+              << ", current thread id = " << CurrentThread::tid();
 }
 
 }  // namespace jpmuduo
