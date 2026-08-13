@@ -3,7 +3,7 @@
 //
 
 #include "jpmuduo/net/TcpServer.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/Buffer.h"
 
 #include <string>
@@ -33,9 +33,9 @@ public:
 private:
     void onConnection(const TcpConnectionPtr& conn) {
         if(conn->connected()) {
-            LOG_INFO("Connection UP : %s", conn->peerAddress().toIpPort().c_str());
+            LOG_INFO << "Connection UP : " << conn->peerAddress().toIpPort();
         }else {
-            LOG_INFO("Connection DOWN : %s", conn->peerAddress().toIpPort().c_str());
+            LOG_INFO << "Connection DOWN : " << conn->peerAddress().toIpPort();
         }
     }
 
@@ -44,7 +44,7 @@ private:
         while (buf->readableBytes() >= sizeof(int32_t)) {
             int32_t len = buf->peekInt32();
             if (len < 0 || len > 64 * 1024 * 1024) {
-                LOG_ERROR("Invalid length: %d\n", len);
+                LOG_ERROR << "Invalid length: " << len;
                 conn->shutdown();
                 return;
             }

@@ -6,7 +6,7 @@
 #include "jpmuduo/net/http/HttpContext.h"
 #include "jpmuduo/net/Buffer.h"
 #include "jpmuduo/net/EventLoop.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <functional>
 #include <algorithm>

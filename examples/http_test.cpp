@@ -7,7 +7,7 @@
 #include "jpmuduo/net/http/HttpResponse.h"
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/net/InetAddress.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <string>
 
@@ -37,7 +37,7 @@ int main() {
     });
 
     server.start();
-    LOG_INFO("HTTP server listening on port 8080\n");
+    LOG_INFO << "HTTP server listening on port 8080";
     loop.loop();
 
     return 0;

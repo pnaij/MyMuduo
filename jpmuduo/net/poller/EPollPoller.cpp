@@ -3,7 +3,7 @@
 //
 
 #include "jpmuduo/net/poller/EPollPoller.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/base/Types.h"
 #include "jpmuduo/net/Channel.h"
 
@@ -32,7 +32,7 @@ const int kDeleted = 2;
 EPollPoller::EPollPoller(EventLoop *loop) : Poller(loop), epollfd_(::epoll_create1(EPOLL_CLOEXEC)), events_(kInitEventListSize)
 {
     if(epollfd_ < 0) {
-        LOG_FATAL("epoll_create error:%d \n", errno);
+        LOG_SYSFATAL << "epoll_create error";
     }
 }
 
@@ -41,24 +41,24 @@ EPollPoller::~EPollPoller() {
 }
 
 TimeStamp EPollPoller::poll(int timeoutMs, Poller::ChannelList *activeChannels) {
-    LOG_DEBUG("func=%s => fd total count:%lu \n", __FUNCTION__ , channels_.size());
+    LOG_DEBUG << "func=" << __FUNCTION__ << " => fd total count:" << channels_.size();
 
     int numEvents = ::epoll_wait(epollfd_, &*events_.begin(), static_cast<int>(events_.size()), timeoutMs);
     int saveErrno = errno;
     TimeStamp now(TimeStamp::now());
 
     if(numEvents > 0) {
-        LOG_DEBUG("%d events happened \n", numEvents);
+        LOG_DEBUG << numEvents << " events happened";
         fillActiveChannels(numEvents, activeChannels);
         if(numEvents == events_.size()) {
             events_.resize(events_.size() * 2);
         }
     }else if(numEvents == 0) {
-        LOG_DEBUG("%s timeout! \n", __FUNCTION__);
+        LOG_DEBUG << __FUNCTION__ << " timeout!";
     }else {
         if(saveErrno != EINTR) {
             errno = saveErrno;
-            LOG_ERROR("EPollPoller::poll() error!\n");
+            LOG_ERROR << "EPollPoller::poll() error!";
         }
     }
 
@@ -68,7 +68,8 @@ TimeStamp EPollPoller::poll(int timeoutMs, Poller::ChannelList *activeChannels) 
 void EPollPoller::updateChannel(Channel *channel) {
     Poller::assertInLoopThread();
     const int index = channel->index();
-    LOG_DEBUG("func=%s => fd=%d events=%d index=%d \n", __FUNCTION__ , channel->fd(), channel->events(), index);
+    LOG_DEBUG << "func=" << __FUNCTION__ << " => fd=" << channel->fd()
+              << " events=" << channel->events() << " index=" << index;
 
     if(index == kNew || index == kDeleted) {
         int fd = channel->fd();
@@ -100,7 +101,7 @@ void EPollPoller::updateChannel(Channel *channel) {
 void EPollPoller::removeChannel(Channel *channel) {
     Poller::assertInLoopThread();
     int fd = channel->fd();
-    LOG_DEBUG("func=%s => fd=%d \n", __FUNCTION__, fd);
+    LOG_DEBUG << "func=" << __FUNCTION__ << " => fd=" << fd;
     assert(channels_.find(fd) != channels_.end());
     assert(channels_[fd] == channel);
     assert(channel->isNoneEvent());
@@ -141,9 +142,9 @@ void EPollPoller::update(int operation, Channel *channel) {
     int fd = channel->fd();
     if(::epoll_ctl(epollfd_, operation, fd, &event) < 0) {
         if(operation == EPOLL_CTL_DEL) {
-            LOG_ERROR("epoll_ctl del error:%d\n", errno);
+            LOG_SYSERR << "epoll_ctl del error";
         }else {
-            LOG_FATAL("epoll_crl add/mod error:%d\n", errno);
+            LOG_SYSFATAL << "epoll_ctl add/mod error";
         }
     }
 }

@@ -5,7 +5,7 @@
 #include "jpmuduo/net/Connector.h"
 #include "jpmuduo/net/Channel.h"
 #include "jpmuduo/net/EventLoop.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/Socket.h"
 
 #include <sys/socket.h>
@@ -73,7 +73,7 @@ void Connector::connect() {
         connecting(sockfd);
         break;
     default:
-        LOG_ERROR("Connector::connect error:%d\n", savedErrno);
+        LOG_ERROR << "Connector::connect error:" << savedErrno;
         ::close(sockfd);
         retry(sockfd);
         break;
@@ -98,10 +98,10 @@ void Connector::handleWrite() {
         }
 
         if (err) {
-            LOG_ERROR("Connector::handleWrite - SO_ERROR: %d\n", err);
+            LOG_ERROR << "Connector::handleWrite - SO_ERROR: " << err;
             retry(sockfd);
         } else if (isSelfConnect(sockfd)) {
-            LOG_ERROR("Connector::handleWrite - self connect, retry\n");
+            LOG_ERROR << "Connector::handleWrite - self connect, retry";
             ::close(sockfd);
             retry(sockfd);
         } else {
@@ -116,13 +116,13 @@ void Connector::handleWrite() {
 }
 
 void Connector::handleError() {
-    LOG_ERROR("Connector::handleError state=%d\n", state_);
+    LOG_ERROR << "Connector::handleError state=" << state_;
     if (state_ == kConnecting) {
         int sockfd = removeAndResetChannel();
         int err = 0;
         socklen_t len = sizeof(err);
         ::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &len);
-        LOG_ERROR("SO_ERROR=%d\n", err);
+        LOG_ERROR << "SO_ERROR=" << err;
         retry(sockfd);
     }
 }
@@ -132,7 +132,7 @@ void Connector::retry(int sockfd) {
     setState(kDisconnected);
 
     if (connect_) {
-        LOG_INFO("Connector::retry - retry in %d ms\n", retryDelayMs_);
+        LOG_INFO << "Connector::retry - retry in " << retryDelayMs_ << " ms";
         std::shared_ptr<Connector> self(shared_from_this());
         loop_->runAfter(retryDelayMs_ / 1000.0, [self]() {
             self->startInLoop();

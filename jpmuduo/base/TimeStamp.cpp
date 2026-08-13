@@ -29,16 +29,18 @@ TimeStamp TimeStamp::addTime(const TimeStamp& ts, double seconds) {
     return TimeStamp(ts.microSecondsSinceEpoch() + delta);
 }
 
-// Returns CLOCK_REALTIME - CLOCK_MONOTONIC offset in microseconds, cached on first call.
-static int64_t realtimeOffsetUs() {
-    struct timespec mono, real;
-    ::clock_gettime(CLOCK_MONOTONIC, &mono);
-    ::clock_gettime(CLOCK_REALTIME, &real);
-    int64_t monotonic = static_cast<int64_t>(mono.tv_sec) * TimeStamp::kMicroSecondsPerSecond
-                        + mono.tv_nsec / 1000;
-    int64_t realtime = static_cast<int64_t>(real.tv_sec) * TimeStamp::kMicroSecondsPerSecond
-                       + real.tv_nsec / 1000;
-    return realtime - monotonic;
+int64_t TimeStamp::realtimeOffsetUs() {
+    static const int64_t kOffset = [] {
+        struct timespec mono, real;
+        ::clock_gettime(CLOCK_MONOTONIC, &mono);
+        ::clock_gettime(CLOCK_REALTIME, &real);
+        int64_t monotonic = static_cast<int64_t>(mono.tv_sec) * kMicroSecondsPerSecond
+                            + mono.tv_nsec / 1000;
+        int64_t realtime = static_cast<int64_t>(real.tv_sec) * kMicroSecondsPerSecond
+                           + real.tv_nsec / 1000;
+        return realtime - monotonic;
+    }();
+    return kOffset;
 }
 
 std::string TimeStamp::toString() const {
@@ -50,8 +52,7 @@ std::string TimeStamp::toString() const {
 }
 
 std::string TimeStamp::toFormattedString() const {
-    static const int64_t kOffset = realtimeOffsetUs();
-    int64_t realUs = microSecondsSinceEpoch_ + kOffset;
+    int64_t realUs = microSecondsSinceEpoch_ + realtimeOffsetUs();
 
     time_t sec = static_cast<time_t>(realUs / kMicroSecondsPerSecond);
     int64_t usec = realUs % kMicroSecondsPerSecond;

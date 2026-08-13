@@ -3,7 +3,7 @@
 //
 
 #include "jpmuduo/net/TcpServer.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/TcpConnection.h"
 
 #include <strings.h>
@@ -13,7 +13,7 @@ namespace jpmuduo {
 
 static EventLoop* CheckLoopNotNull(EventLoop* loop) {
     if(loop == nullptr) {
-        LOG_FATAL("%s:%s:%d mainLoop is null! \n", __FILE__, __FUNCTION__, __LINE__);
+        LOG_FATAL << "mainLoop is null!";
     }
 
     return loop;
@@ -63,14 +63,14 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr) {
     ++nextConnId_;
     std::string connName = name_ + buf;
 
-    LOG_INFO("TcpServer::newConnection [%s] - new connection [%s] from %s \n",
-             name_.c_str(), connName.c_str(), peerAddr.toIpPort().c_str());
+    LOG_INFO << "TcpServer::newConnection [" << name_ << "] - new connection ["
+             << connName << "] from " << peerAddr.toIpPort();
 
     sockaddr_in local;
     ::bzero(&local, sizeof(local));
     socklen_t addrlen = sizeof(local);
     if(::getsockname(sockfd, (sockaddr*)&local, &addrlen) < 0) {
-        LOG_ERROR("sockets::getLocalAddr\n");
+        LOG_SYSERR << "sockets::getLocalAddr";
     }
     InetAddress localAddr(local);
 
@@ -102,8 +102,8 @@ void TcpServer::removeConnection(const TcpConnectionPtr& conn) {
 }
 
 void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn) {
-    LOG_INFO("TcpServer::removeConnectionInLoop [%s] - connection %s\n",
-             name_.c_str(), conn->name().c_str());
+    LOG_INFO << "TcpServer::removeConnectionInLoop [" << name_ << "] - connection "
+             << conn->name();
 
     connections_.erase(conn->name());
     currentConnections_.fetch_sub(1);

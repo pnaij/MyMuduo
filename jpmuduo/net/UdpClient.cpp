@@ -3,7 +3,7 @@
 //
 
 #include "jpmuduo/net/UdpClient.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/net/Buffer.h"
 
@@ -14,7 +14,7 @@ namespace jpmuduo {
 
 static EventLoop* CheckLoopNotNull(EventLoop* loop) {
     if (loop == nullptr) {
-        LOG_FATAL("%s:%s:%d loop is null! \n", __FILE__, __FUNCTION__, __LINE__);
+        LOG_FATAL << "loop is null!";
     }
     return loop;
 }
@@ -32,7 +32,7 @@ UdpClient::UdpClient(EventLoop* loop, const InetAddress& serverAddr, const std::
     channel_->setReadCallback(std::bind(&UdpClient::handleRead, this, std::placeholders::_1));
     channel_->setErrorCallback(std::bind(&UdpClient::handleError, this));
 
-    LOG_INFO("UdpClient[%s] created, fd=%d\n", name_.c_str(), socket_->fd());
+    LOG_INFO << "UdpClient[" << name_ << "] created, fd=" << socket_->fd();
 }
 
 UdpClient::~UdpClient() {
@@ -44,7 +44,7 @@ UdpClient::~UdpClient() {
 void UdpClient::start() {
     loop_->runInLoop([this]() {
         channel_->enableReading();
-        LOG_INFO("UdpClient[%s] started on fd=%d\n", name_.c_str(), socket_->fd());
+        LOG_INFO << "UdpClient[" << name_ << "] started on fd=" << socket_->fd();
     });
 }
 
@@ -55,13 +55,13 @@ void UdpClient::connect() {
         sockaddr_in addr = *serverAddr_.getSockAddr();
         int ret = ::connect(socket_->fd(), (const sockaddr*)&addr, sizeof(addr));
         if (ret < 0) {
-            LOG_ERROR("UdpClient[%s] connect error: %d\n", name_.c_str(), errno);
+            LOG_SYSERR << "UdpClient[" << name_ << "] connect error";
             connected_ = false;
             return;
         }
         channel_->enableReading();
-        LOG_INFO("UdpClient[%s] connected to %s, fd=%d\n",
-                 name_.c_str(), serverAddr_.toIpPort().c_str(), socket_->fd());
+        LOG_INFO << "UdpClient[" << name_ << "] connected to "
+                 << serverAddr_.toIpPort() << ", fd=" << socket_->fd();
     });
 }
 
@@ -71,7 +71,7 @@ void UdpClient::disconnect() {
     loop_->runInLoop([this]() {
         channel_->disableAll();
         channel_->remove();
-        LOG_INFO("UdpClient[%s] disconnected, fd=%d\n", name_.c_str(), socket_->fd());
+        LOG_INFO << "UdpClient[" << name_ << "] disconnected, fd=" << socket_->fd();
     });
 }
 
@@ -79,7 +79,7 @@ void UdpClient::send(const void* data, size_t len) {
     loop_->runInLoop([this, copy = std::string(static_cast<const char*>(data), len)]() {
         ssize_t n = ::send(socket_->fd(), copy.data(), copy.size(), 0);
         if (n < 0) {
-            LOG_ERROR("UdpClient[%s] send error: %d\n", name_.c_str(), errno);
+            LOG_SYSERR << "UdpClient[" << name_ << "] send error";
         }
     });
 }
@@ -92,7 +92,7 @@ void UdpClient::sendTo(const void* data, size_t len, const InetAddress& peerAddr
     loop_->runInLoop([this, copy = std::string(static_cast<const char*>(data), len), peerAddr]() {
         ssize_t n = socket_->sendto(copy.data(), copy.size(), peerAddr);
         if (n < 0) {
-            LOG_ERROR("UdpClient[%s] sendTo error: %d\n", name_.c_str(), errno);
+            LOG_SYSERR << "UdpClient[" << name_ << "] sendTo error";
         }
     });
 }
@@ -106,7 +106,7 @@ void UdpClient::handleRead(TimeStamp receiveTime) {
     InetAddress senderAddr;
     ssize_t n = socket_->recvfrom(buf, sizeof(buf), &senderAddr);
     if (n < 0) {
-        LOG_ERROR("UdpClient[%s] recvfrom error: %d\n", name_.c_str(), errno);
+        LOG_SYSERR << "UdpClient[" << name_ << "] recvfrom error";
         return;
     }
 
@@ -118,7 +118,7 @@ void UdpClient::handleRead(TimeStamp receiveTime) {
 }
 
 void UdpClient::handleError() {
-    LOG_ERROR("UdpClient[%s] fd=%d error\n", name_.c_str(), socket_->fd());
+    LOG_ERROR << "UdpClient[" << name_ << "] fd=" << socket_->fd() << " error";
 }
 
 }  // namespace jpmuduo

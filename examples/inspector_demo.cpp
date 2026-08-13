@@ -3,7 +3,7 @@
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/net/InetAddress.h"
 #include "jpmuduo/net/TcpServer.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 using namespace jpmuduo;
 

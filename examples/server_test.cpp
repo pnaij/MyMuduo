@@ -2,7 +2,7 @@
 // server_test.cpp - TcpServer unit tests
 //
 #include "jpmuduo/net/TcpServer.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/net/InetAddress.h"
 #include "jpmuduo/net/Buffer.h"
@@ -40,16 +40,16 @@ public:
 private:
     void onConnection(const TcpConnectionPtr& conn) {
         if (conn->connected()) {
-            LOG_INFO("TEST: Connection UP : %s", conn->peerAddress().toIpPort().c_str());
+            LOG_INFO << "TEST: Connection UP : " << conn->peerAddress().toIpPort();
             s_connectionUp++;
         } else {
-            LOG_INFO("TEST: Connection DOWN : %s", conn->peerAddress().toIpPort().c_str());
+            LOG_INFO << "TEST: Connection DOWN : " << conn->peerAddress().toIpPort();
             s_connectionDown++;
         }
     }
     void onMessage(const TcpConnectionPtr& conn, Buffer* buf, TimeStamp) {
         std::string msg = buf->retrieveAllAsString();
-        LOG_INFO("TEST: Message: %s", msg.c_str());
+        LOG_INFO << "TEST: Message: " << msg;
         s_messageCount++;
         conn->send("ECHO: " + msg);
     }
@@ -121,14 +121,14 @@ static bool testConnectionUpDown() {
 
     int connRet = ::connect(sock, (struct sockaddr*)&addr, sizeof(addr));
     if (connRet == 0) {
-        LOG_INFO("CLIENT: Connected");
+        LOG_INFO << "CLIENT: Connected";
     } else {
         ::perror("CLIENT: connect");
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     ::close(sock);
-    LOG_INFO("CLIENT: Closed");
+    LOG_INFO << "CLIENT: Closed";
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 

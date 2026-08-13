@@ -113,7 +113,8 @@ Logger::Impl::Impl(LogLevel level, int savedErrno, const SourceFile& file, int l
 
 void Logger::Impl::formatTime()
 {
-  int64_t microSecondsSinceEpoch = time_.microSecondsSinceEpoch();
+  // 内部计时基于 CLOCK_MONOTONIC，显示时转换为墙钟时间
+  int64_t microSecondsSinceEpoch = time_.microSecondsSinceEpoch() + TimeStamp::realtimeOffsetUs();
   time_t seconds = static_cast<time_t>(microSecondsSinceEpoch / TimeStamp::kMicroSecondsPerSecond);
   int microseconds = static_cast<int>(microSecondsSinceEpoch % TimeStamp::kMicroSecondsPerSecond);
   if (seconds != t_lastSecond)

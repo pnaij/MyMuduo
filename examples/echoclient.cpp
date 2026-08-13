@@ -8,7 +8,7 @@
 #include "jpmuduo/net/Buffer.h"
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/net/InetAddress.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <iostream>
 #include <string>
@@ -27,7 +27,7 @@ public:
         client_.setConnectionCallback(
             [this](const TcpConnectionPtr& conn) {
                 if (conn->connected()) {
-                    LOG_INFO("Connected to %s", conn->peerAddress().toIpPort().c_str());
+                    LOG_INFO << "Connected to " << conn->peerAddress().toIpPort();
                     {
                         std::lock_guard<std::mutex> lock(mutex_);
                         connection_ = conn;
@@ -35,7 +35,7 @@ public:
                     }
                     connReady_.notify_one();
                 } else {
-                    LOG_INFO("Disconnected");
+                    LOG_INFO << "Disconnected";
                     {
                         std::lock_guard<std::mutex> lock(mutex_);
                         connection_.reset();

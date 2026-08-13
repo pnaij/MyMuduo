@@ -4,7 +4,7 @@
 
 #include "jpmuduo/net/EventLoopThreadPool.h"
 #include "jpmuduo/net/EventLoopThread.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <memory>
 #include <thread>
@@ -25,7 +25,7 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop *baseLoop, const std::string 
     , started_(false)
     , numThreads_(computeDefaultThreadNum())
     , next_(0) {
-    LOG_INFO("EventLoopThreadPool default threads: %d\n", numThreads_);
+    LOG_INFO << "EventLoopThreadPool default threads: " << numThreads_;
 }
 
 EventLoopThreadPool::~EventLoopThreadPool() {

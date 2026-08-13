@@ -4,7 +4,7 @@
 
 #include "jpmuduo/net/http/HttpContext.h"
 #include "jpmuduo/net/Buffer.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <algorithm>
 #include <cstdlib>

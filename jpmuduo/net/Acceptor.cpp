@@ -3,7 +3,7 @@
 //
 
 #include "jpmuduo/net/Acceptor.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/InetAddress.h"
 #include "jpmuduo/net/Socket.h"
 
@@ -49,9 +49,9 @@ void Acceptor::handleRead() {
             ::close(connfd);
         }
     }else {
-        LOG_ERROR("%s:%s:%d accept error:%d \n", __FILE__, __FUNCTION__ , __LINE__, errno);
+        LOG_SYSERR << "accept error";
         if(errno == EMFILE) {
-            LOG_ERROR("%s:%s:%d sockfd reached limit! \n", __FILE__, __FUNCTION__, __LINE__);
+            LOG_ERROR << "sockfd reached limit!";
             ::close(idleFd_);
             idleFd_ = ::accept(acceptSocket_.fd(), nullptr, nullptr);
             ::close(idleFd_);

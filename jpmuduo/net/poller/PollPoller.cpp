@@ -4,7 +4,7 @@
 
 #include "jpmuduo/net/poller/PollPoller.h"
 #include "jpmuduo/net/Channel.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <errno.h>
 #include <unistd.h>
@@ -31,21 +31,21 @@ TimeStamp PollPoller::poll(int timeoutMs, Poller::ChannelList *activeChannels) {
         pollfds_.push_back(pfd);
     }
 
-    LOG_DEBUG("func=%s => fd total count:%lu \n", __FUNCTION__, channels_.size());
+    LOG_DEBUG << "func=" << __FUNCTION__ << " => fd total count:" << channels_.size();
 
     int numEvents = ::poll(pollfds_.data(), pollfds_.size(), timeoutMs);
     int saveErrno = errno;
     TimeStamp now(TimeStamp::now());
 
     if (numEvents > 0) {
-        LOG_DEBUG("%d events happened \n", numEvents);
+        LOG_DEBUG << numEvents << " events happened";
         fillActiveChannels(numEvents, activeChannels);
     } else if (numEvents == 0) {
-        LOG_DEBUG("%s timeout! \n", __FUNCTION__);
+        LOG_DEBUG << __FUNCTION__ << " timeout!";
     } else {
         if (saveErrno != EINTR) {
             errno = saveErrno;
-            LOG_ERROR("PollPoller::poll() error!\n");
+            LOG_ERROR << "PollPoller::poll() error!";
         }
     }
 
@@ -54,7 +54,8 @@ TimeStamp PollPoller::poll(int timeoutMs, Poller::ChannelList *activeChannels) {
 
 void PollPoller::updateChannel(Channel *channel) {
     const int index = channel->index();
-    LOG_DEBUG("func=%s => fd=%d events=%d index=%d \n", __FUNCTION__, channel->fd(), channel->events(), index);
+    LOG_DEBUG << "func=" << __FUNCTION__ << " => fd=" << channel->fd()
+              << " events=" << channel->events() << " index=" << index;
 
     if (index == kNew || index == kDeleted) {
         if (index == kNew) {
@@ -69,7 +70,7 @@ void PollPoller::removeChannel(Channel *channel) {
     int fd = channel->fd();
     channels_.erase(fd);
 
-    LOG_DEBUG("func=%s => fd=%d \n", __FUNCTION__, fd);
+    LOG_DEBUG << "func=" << __FUNCTION__ << " => fd=" << fd;
 
     int index = channel->index();
     if (index == kAdded) {

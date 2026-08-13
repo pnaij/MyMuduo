@@ -3,7 +3,7 @@
 //
 
 #include "jpmuduo/net/Socket.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/InetAddress.h"
 
 #include <unistd.h>
@@ -22,7 +22,7 @@ Socket::~Socket() {
 int Socket::createTcpSocket() {
     int sockfd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if (sockfd < 0) {
-        LOG_FATAL("create TCP socket error: %d\n", errno);
+        LOG_SYSFATAL << "create TCP socket error";
     }
     return sockfd;
 }
@@ -30,20 +30,20 @@ int Socket::createTcpSocket() {
 int Socket::createUdpSocket() {
     int sockfd = ::socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if (sockfd < 0) {
-        LOG_FATAL("create UDP socket error: %d\n", errno);
+        LOG_SYSFATAL << "create UDP socket error";
     }
     return sockfd;
 }
 
 void Socket::bindAddress(const InetAddress &localaddr) {
     if(::bind(sockfd_, (sockaddr*)localaddr.getSockAddr(), sizeof(sockaddr_in)) != 0) {
-        LOG_FATAL("bind socket:%d fail \n", sockfd_);
+        LOG_SYSFATAL << "bind socket:" << sockfd_ << " fail";
     }
 }
 
 void Socket::listen() {
     if(::listen(sockfd_, 65535) != 0) {
-        LOG_FATAL("listen sockfd:%d fail, errno=%d \n", sockfd_, errno);
+        LOG_SYSFATAL << "listen sockfd:" << sockfd_ << " fail";
     }
 }
 
@@ -53,10 +53,10 @@ int Socket::accept(InetAddress *peeraddr) {
     bzero(&addr, sizeof(addr));
     int connfd = ::accept4(sockfd_, (sockaddr*)&addr, &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if(connfd >= 0) {
-        LOG_INFO("accept success\n");
+        LOG_INFO << "accept success";
         peeraddr->setSockAddr(addr);
     }else {
-        LOG_ERROR("accept failed on sockfd:%d, errno=%d \n", sockfd_, errno);
+        LOG_SYSERR << "accept failed on sockfd:" << sockfd_;
     }
 
     return connfd;
@@ -64,7 +64,7 @@ int Socket::accept(InetAddress *peeraddr) {
 
 void Socket::shutdownWrite() {
     if(::shutdown(sockfd_, SHUT_WR) < 0) {
-        LOG_ERROR("shutdownWrite error\n");
+        LOG_SYSERR << "shutdownWrite error";
     }
 }
 

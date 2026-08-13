@@ -1,6 +1,6 @@
 // Benchmark echo server - keeps connections alive
 #include "jpmuduo/net/TcpServer.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/Buffer.h"
 
 #include <string>
@@ -36,14 +36,15 @@ public:
 private:
     void onConnection(const TcpConnectionPtr& conn) {
         if(conn->connected()) {
-            LOG_INFO("Connection UP : %s", conn->peerAddress().toIpPort().c_str());
+            LOG_INFO << "Connection UP : " << conn->peerAddress().toIpPort();
         } else {
-            LOG_INFO("Connection DOWN : %s", conn->peerAddress().toIpPort().c_str());
+            LOG_INFO << "Connection DOWN : " << conn->peerAddress().toIpPort();
         }
     }
 
     void onHighWaterMark(const TcpConnectionPtr& conn, size_t bytes) {
-        LOG_INFO("High water mark %zu bytes, stop reading: %s", bytes, conn->peerAddress().toIpPort().c_str());
+        LOG_INFO << "High water mark " << bytes << " bytes, stop reading: "
+                 << conn->peerAddress().toIpPort();
         conn->stopRead();
     }
 
@@ -56,7 +57,7 @@ private:
         while (buf->readableBytes() >= sizeof(int32_t)) {
             int32_t len = buf->peekInt32();
             if (len < 0 || len > 64 * 1024 * 1024) {
-                LOG_ERROR("Invalid length: %d\n", len);
+                LOG_ERROR << "Invalid length: " << len;
                 conn->shutdown();
                 return;
             }

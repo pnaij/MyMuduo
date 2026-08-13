@@ -6,7 +6,7 @@
 #include "jpmuduo/net/Connector.h"
 #include "jpmuduo/net/TcpConnection.h"
 #include "jpmuduo/net/EventLoop.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <functional>
 
@@ -21,18 +21,18 @@ TcpClient::TcpClient(EventLoop* loop, const InetAddress& serverAddr, const std::
 {
     connector_->setNewConnectionCallback(
         std::bind(&TcpClient::newConnection, this, std::placeholders::_1));
-    LOG_INFO("TcpClient::TcpClient[%s]\n", name_.c_str());
+    LOG_INFO << "TcpClient::TcpClient[" << name_ << "]";
 }
 
 TcpClient::~TcpClient() {
-    LOG_INFO("TcpClient::~TcpClient[%s]\n", name_.c_str());
+    LOG_INFO << "TcpClient::~TcpClient[" << name_ << "]";
     connector_->stop();
     disconnect();
 }
 
 void TcpClient::connect() {
-    LOG_INFO("TcpClient::connect[%s] - connecting to %s\n",
-             name_.c_str(), connector_->serverAddress().toIpPort().c_str());
+    LOG_INFO << "TcpClient::connect[" << name_ << "] - connecting to "
+             << connector_->serverAddress().toIpPort();
     connector_->start();
 }
 
@@ -83,7 +83,7 @@ void TcpClient::removeConnection(const TcpConnectionPtr& conn) {
     });
 
     if (retry_) {
-        LOG_INFO("TcpClient::removeConnection[%s] - retry connecting\n", name_.c_str());
+        LOG_INFO << "TcpClient::removeConnection[" << name_ << "] - retry connecting";
         connector_->restart();
     }
 }

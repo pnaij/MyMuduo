@@ -9,6 +9,8 @@
 #include "jpmuduo/base/LogStream.h"
 #include "jpmuduo/base/TimeStamp.h"
 
+#include <functional>
+
 namespace jpmuduo
 {
 
@@ -70,8 +72,8 @@ class Logger
   static LogLevel logLevel();
   static void setLogLevel(LogLevel level);
 
-  typedef void (*OutputFunc)(const char* msg, int len);
-  typedef void (*FlushFunc)();
+  typedef std::function<void(const char* msg, int len)> OutputFunc;
+  typedef std::function<void()> FlushFunc;
   static void setOutput(OutputFunc);
   static void setFlush(FlushFunc);
   static void setTimeZone(const TimeZone& tz);

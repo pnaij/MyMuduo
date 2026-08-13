@@ -4,7 +4,7 @@
 
 #include "jpmuduo/net/TimerQueue.h"
 #include "jpmuduo/net/EventLoop.h"
-#include "jpmuduo/base/Logger.h"
+#include "jpmuduo/base/Logging.h"
 
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -16,7 +16,7 @@ namespace jpmuduo {
 int TimerQueue::createTimerfd() {
     int fd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (fd < 0) {
-        LOG_FATAL("timerfd_create error:%d \n", errno);
+        LOG_SYSFATAL << "timerfd_create error";
     }
     return fd;
 }
@@ -146,7 +146,7 @@ void TimerQueue::resetTimerfd(TimeStamp expiration) {
     newValue.it_value.tv_nsec = static_cast<long>((microSeconds % TimeStamp::kMicroSecondsPerSecond) * 1000);
 
     if (::timerfd_settime(timerfd_, 0, &newValue, nullptr) < 0) {
-        LOG_ERROR("timerfd_settime error:%d\n", errno);
+        LOG_SYSERR << "timerfd_settime error";
     }
 }
 
@@ -154,7 +154,7 @@ void TimerQueue::readTimerfd() {
     uint64_t howmany;
     ssize_t n = ::read(timerfd_, &howmany, sizeof(howmany));
     if (n != sizeof(howmany)) {
-        LOG_ERROR("TimerQueue::readTimerfd reads %lu bytes instead of 8\n", n);
+        LOG_ERROR << "TimerQueue::readTimerfd reads " << n << " bytes instead of 8";
     }
 }
 

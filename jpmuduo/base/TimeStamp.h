@@ -21,6 +21,10 @@ public:
     static TimeStamp now();
     static TimeStamp addTime(const TimeStamp& ts, double seconds);
 
+    // CLOCK_REALTIME 与 CLOCK_MONOTONIC 的偏差（微秒），首次调用时缓存。
+    // 内部以单调时钟计时保证精度，显示墙钟时间时用此偏差转换。
+    static int64_t realtimeOffsetUs();
+
     // Machine-parseable pure numeric: "sec.usec" e.g. "8245137.123456"
     std::string toString() const;
 
