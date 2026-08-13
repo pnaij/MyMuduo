@@ -14,4 +14,6 @@ file(GLOB HTTP_SRCS jpmuduo/net/http/*.cpp)
 add_library(jpmuduo SHARED ${NET_SRCS} ${POLLER_SRCS} ${INSPECTOR_SRCS} ${BASE_SRCS} ${HTTP_SRCS})
 target_link_libraries(jpmuduo pthread z)
 
+add_subdirectory(jpmuduo/base/tests)
+add_subdirectory(jpmuduo/net/tests)
 add_subdirectory(examples)

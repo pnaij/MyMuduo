@@ -1,0 +1,23 @@
+# jpmuduo net 模块单元测试
+# 每个测试自包含 main()，链接 libjpmuduo
+
+add_executable(buffer_unittest Buffer_unittest.cpp)
+target_link_libraries(buffer_unittest jpmuduo)
+
+add_executable(inetaddress_unittest InetAddress_unittest.cpp)
+target_link_libraries(inetaddress_unittest jpmuduo)
+
+add_executable(eventloop_unittest EventLoop_unittest.cpp)
+target_link_libraries(eventloop_unittest jpmuduo)
+
+add_executable(eventloopthread_unittest EventLoopThread_unittest.cpp)
+target_link_libraries(eventloopthread_unittest jpmuduo)
+
+add_executable(timerqueue_unittest TimerQueue_unittest.cpp)
+target_link_libraries(timerqueue_unittest jpmuduo)
+
+add_executable(channel_test Channel_test.cpp)
+target_link_libraries(channel_test jpmuduo)
+
+add_executable(eventloopthreadpool_unittest EventLoopThreadPool_unittest.cpp)
+target_link_libraries(eventloopthreadpool_unittest jpmuduo)
