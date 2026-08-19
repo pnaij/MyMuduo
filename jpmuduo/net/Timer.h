@@ -52,19 +52,6 @@ private:
     int64_t sequence_;
 };
 
-class TimerId {
-public:
-    TimerId() : timer_(nullptr), sequence_(0) {}
-    TimerId(Timer* timer, int64_t seq) : timer_(timer), sequence_(seq) {}
-
-    Timer* timer() const { return timer_; }
-    int64_t sequence() const { return sequence_; }
-
-private:
-    Timer* timer_;
-    int64_t sequence_;
-};
-
 }  // namespace jpmuduo
 
 #endif // JPMUDUO_TIMER_H

@@ -7,10 +7,9 @@
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/Socket.h"
+#include "jpmuduo/net/SocketsOps.h"
 
-#include <sys/socket.h>
 #include <errno.h>
-#include <unistd.h>
 
 namespace jpmuduo {
 
@@ -61,8 +60,7 @@ void Connector::stopInLoop() {
 
 void Connector::connect() {
     int sockfd = Socket::createTcpSocket();
-    int ret = ::connect(sockfd, reinterpret_cast<const sockaddr*>(serverAddr_.getSockAddr()),
-                        sizeof(*serverAddr_.getSockAddr()));
+    int ret = sockets::connect(sockfd, sockets::sockaddr_cast(serverAddr_.getSockAddr()));
     int savedErrno = (ret == 0) ? 0 : errno;
 
     switch (savedErrno) {
@@ -74,7 +72,7 @@ void Connector::connect() {
         break;
     default:
         LOG_ERROR << "Connector::connect error:" << savedErrno;
-        ::close(sockfd);
+        sockets::close(sockfd);
         retry(sockfd);
         break;
     }
@@ -91,25 +89,21 @@ void Connector::connecting(int sockfd) {
 void Connector::handleWrite() {
     if (state_ == kConnecting) {
         int sockfd = removeAndResetChannel();
-        int err = 0;
-        socklen_t len = sizeof(err);
-        if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
-            err = errno;
-        }
+        int err = sockets::getSocketError(sockfd);
 
         if (err) {
             LOG_ERROR << "Connector::handleWrite - SO_ERROR: " << err;
             retry(sockfd);
-        } else if (isSelfConnect(sockfd)) {
+        } else if (sockets::isSelfConnect(sockfd)) {
             LOG_ERROR << "Connector::handleWrite - self connect, retry";
-            ::close(sockfd);
+            sockets::close(sockfd);
             retry(sockfd);
         } else {
             setState(kConnected);
             if (connect_ && newConnectionCallback_) {
                 newConnectionCallback_(sockfd);
             } else {
-                ::close(sockfd);
+                sockets::close(sockfd);
             }
         }
     }
@@ -119,16 +113,14 @@ void Connector::handleError() {
     LOG_ERROR << "Connector::handleError state=" << state_;
     if (state_ == kConnecting) {
         int sockfd = removeAndResetChannel();
-        int err = 0;
-        socklen_t len = sizeof(err);
-        ::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &len);
+        int err = sockets::getSocketError(sockfd);
         LOG_ERROR << "SO_ERROR=" << err;
         retry(sockfd);
     }
 }
 
 void Connector::retry(int sockfd) {
-    ::close(sockfd);
+    sockets::close(sockfd);
     setState(kDisconnected);
 
     if (connect_) {
@@ -151,23 +143,6 @@ int Connector::removeAndResetChannel() {
 
 void Connector::resetChannel() {
     channel_.reset();
-}
-
-bool Connector::isSelfConnect(int sockfd) {
-    struct sockaddr_in localAddr;
-    socklen_t addrlen = sizeof(localAddr);
-    if (::getsockname(sockfd, (struct sockaddr*)&localAddr, &addrlen) < 0) {
-        return false;
-    }
-
-    struct sockaddr_in peerAddr;
-    addrlen = sizeof(peerAddr);
-    if (::getpeername(sockfd, (struct sockaddr*)&peerAddr, &addrlen) < 0) {
-        return false;
-    }
-
-    return localAddr.sin_port == peerAddr.sin_port
-        && localAddr.sin_addr.s_addr == peerAddr.sin_addr.s_addr;
 }
 
 }  // namespace jpmuduo

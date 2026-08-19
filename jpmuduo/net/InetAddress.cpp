@@ -3,6 +3,8 @@
 //
 
 #include "jpmuduo/net/InetAddress.h"
+#include "jpmuduo/net/Endian.h"
+#include "jpmuduo/net/SocketsOps.h"
 
 #include <strings.h>
 #include <string.h>
@@ -11,41 +13,27 @@
 namespace jpmuduo {
 
 InetAddress::InetAddress(uint16_t port, std::string ip) {
-    bzero(&addr_, sizeof(addr_));
-    addr_.sin_family = AF_INET;
-    addr_.sin_port = htons(port);
-    addr_.sin_addr.s_addr = inet_addr(ip.c_str());
+    sockets::fromIpPort(ip.c_str(), port, &addr_);
 }
 
 std::string InetAddress::toIp() const {
     char buf[64] = {0};
-    ::inet_ntop(AF_INET, &addr_.sin_addr, buf, sizeof(buf));
+    sockets::toIp(buf, sizeof(buf), sockets::sockaddr_cast(&addr_));
 
     return buf;
 }
 std::string InetAddress::toIpPort() const {
     char buf[64] = {0};
-    ::inet_ntop(AF_INET, &addr_.sin_addr, buf, sizeof(buf));
-    size_t  end = strlen(buf);
-    uint16_t port = ntohs(addr_.sin_port);
-    sprintf(buf + end, ":%u", port);
+    sockets::toIpPort(buf, sizeof(buf), sockets::sockaddr_cast(&addr_));
 
     return buf;
 }
 uint16_t InetAddress::toPort() const {
-    return ntohs(addr_.sin_port);
+    return sockets::networkToHost16(addr_.sin_port);
 }
 
 InetAddress InetAddress::getLocalAddress(int sockfd) {
-    sockaddr_in addr;
-    bzero(&addr, sizeof(addr));
-    socklen_t addrlen = sizeof(addr);
-    if (::getsockname(sockfd, reinterpret_cast<sockaddr*>(&addr), &addrlen) < 0) {
-        addr.sin_family = AF_INET;
-        addr.sin_port = 0;
-        addr.sin_addr.s_addr = INADDR_ANY;
-    }
-    return InetAddress(addr);
+    return InetAddress(sockets::getLocalAddr(sockfd));
 }
 
 }  // namespace jpmuduo

@@ -60,7 +60,7 @@ void TcpClient::newConnection(int sockfd) {
     conn->setConnectionCallback(connectionCallback_);
     conn->setMessageCallback(messageCallback_);
     conn->setWriteCompleteCallback(writeCompleteCallback_);
-    conn->setHighWaterMarkCallback(highWaterMarkCallback_);
+    conn->setHighWaterMarkCallback(highWaterMarkCallback_, highWaterMark_);
     conn->setCloseCallback(
         std::bind(&TcpClient::removeConnection, this, std::placeholders::_1));
 

@@ -6,14 +6,17 @@
 #define JPMUDUO_TCPCONNECTION_H
 
 #include "jpmuduo/base/noncopyable.h"
+#include "jpmuduo/base/WeakCallback.h"
 #include "jpmuduo/net/InetAddress.h"
 #include "jpmuduo/net/Callbacks.h"
 #include "jpmuduo/net/Buffer.h"
 #include "jpmuduo/base/TimeStamp.h"
 
+#include <any>
 #include <memory>
 #include <string>
 #include <atomic>
+#include <netinet/tcp.h>  // struct tcp_info
 
 namespace jpmuduo {
 
@@ -38,11 +41,23 @@ public:
 
     bool connected() const { return state_ == kConnected; }
 
+    // return true if success.
+    bool getTcpInfo(struct tcp_info*) const;
+    std::string getTcpInfoString() const;
+
     void send(const std::string& buf);
     void send(Buffer* buf);
     void send(const void* data, int len);
     void send(const void* data, size_t len);
     void shutdown();
+    // 优雅关闭（等数据发完再断）；forceClose 立即走 handleClose 全关
+    void forceClose();
+    void forceCloseWithDelay(double seconds);
+
+    // 用户数据附着：业务层可把任意对象挂到连接上
+    void setContext(const std::any& context) { context_ = context; }
+    const std::any& getContext() const { return context_; }
+    std::any* getMutableContext() { return &context_; }
 
     void setConnectionCallback(const ConnectionCallback& cb) {
         connectionCallback_ = cb;
@@ -56,8 +71,10 @@ public:
         writeCompleteCallback_ = cb;
     }
 
-    void setHighWaterMarkCallback(const HighWaterMarkCallback& cb) {
+    // 高水位回调 + 水位一起设置（原始 muduo 签名）
+    void setHighWaterMarkCallback(const HighWaterMarkCallback& cb, size_t highWaterMark) {
         highWaterMarkCallback_ = cb;
+        highWaterMark_ = highWaterMark;
     }
 
     void setCloseCallback(const CloseCallback& cb) {
@@ -75,6 +92,7 @@ private:
         kDisconnected, kConnecting, kConnected, kDisconnecting
     };
     void setState(StateE state) { state_ = state; }
+    const char* stateToString() const;
 
     void handleRead(TimeStamp receiveTime);
     void handleWrite();
@@ -84,6 +102,7 @@ private:
     void sendInLoop(const void* message, size_t len);
     void sendInLoop(Buffer* buf);
     void shutdownInLoop();
+    void forceCloseInLoop();
 
     EventLoop* loop_;
     const std::string name_;
@@ -102,6 +121,8 @@ private:
     HighWaterMarkCallback highWaterMarkCallback_;
     CloseCallback closeCallback_;
     size_t highWaterMark_;
+
+    std::any context_;
 
     Buffer inputBuffer_;
     Buffer outputBuffer_;

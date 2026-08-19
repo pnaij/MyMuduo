@@ -5,6 +5,7 @@
 #ifndef JPMUDUO_SOCKET_H
 #define JPMUDUO_SOCKET_H
 
+#include <netinet/tcp.h>  // struct tcp_info
 #include <sys/types.h>
 
 #include "jpmuduo/base/noncopyable.h"
@@ -22,6 +23,10 @@ public:
 
     static int createTcpSocket();
     static int createUdpSocket();
+
+    // return true if success.
+    bool getTcpInfo(struct tcp_info*) const;
+    bool getTcpInfoString(char* buf, int len) const;
 
     void bindAddress(const InetAddress& localaddr);
     void listen();

@@ -7,6 +7,7 @@
 #include "jpmuduo/net/TcpConnection.h"
 #include "jpmuduo/net/Buffer.h"
 #include "jpmuduo/net/EventLoop.h"
+#include "jpmuduo/net/EventLoopThread.h"
 #include "jpmuduo/net/InetAddress.h"
 #include "jpmuduo/base/Logging.h"
 
@@ -80,12 +81,14 @@ int main(int argc, char* argv[]) {
     const char* host = (argc > 1) ? argv[1] : "127.0.0.1";
     uint16_t    port = (argc > 2) ? static_cast<uint16_t>(std::stoi(argv[2])) : 8888;
 
-    EventLoop loop;
+    // EventLoop 线程绑定：EventLoopThread 在子线程创建并运行 loop，
+    // 主线程通过 runInLoop 跨线程投递 connect（符合 muduo 线程模型）
+    EventLoopThread loopThread;
+    EventLoop* loop = loopThread.startLoop();
     InetAddress addr(port, host);
-    EchoClient client(&loop, addr);
-    client.connect();
+    EchoClient client(loop, addr);
 
-    std::thread ioThread([&loop]() { loop.loop(); });
+    client.connect();
 
     client.waitConnected();
     std::cout << "Type message (Ctrl+D or /quit to exit):" << std::endl;
@@ -97,6 +100,6 @@ int main(int argc, char* argv[]) {
     }
 
     client.disconnect();
-    ioThread.join();
+    // loopThread 析构时 quit + join，主线程等待 IO 线程收尾
     return 0;
 }

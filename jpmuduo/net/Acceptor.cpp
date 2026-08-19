@@ -6,6 +6,7 @@
 #include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/InetAddress.h"
 #include "jpmuduo/net/Socket.h"
+#include "jpmuduo/net/SocketsOps.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -30,7 +31,7 @@ Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reusepor
 Acceptor::~Acceptor() {
     acceptChannel_.disableAll();
     acceptChannel_.remove();
-    ::close(idleFd_);
+    sockets::close(idleFd_);
 }
 
 void Acceptor::listen() {
@@ -46,15 +47,15 @@ void Acceptor::handleRead() {
         if(newConnectionCallback_) {
             newConnectionCallback_(connfd, peerAddr);
         }else {
-            ::close(connfd);
+            sockets::close(connfd);
         }
     }else {
         LOG_SYSERR << "accept error";
         if(errno == EMFILE) {
             LOG_ERROR << "sockfd reached limit!";
-            ::close(idleFd_);
+            sockets::close(idleFd_);
             idleFd_ = ::accept(acceptSocket_.fd(), nullptr, nullptr);
-            ::close(idleFd_);
+            sockets::close(idleFd_);
             idleFd_ = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
         }
     }

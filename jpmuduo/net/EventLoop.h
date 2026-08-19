@@ -16,6 +16,7 @@
 #include "jpmuduo/base/TimeStamp.h"
 #include "jpmuduo/base/CurrentThread.h"
 #include "jpmuduo/net/Timer.h"
+#include "jpmuduo/net/TimerId.h"
 
 namespace jpmuduo {
 

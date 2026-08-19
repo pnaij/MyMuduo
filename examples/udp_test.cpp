@@ -5,12 +5,12 @@
 #include "jpmuduo/net/UdpServer.h"
 #include "jpmuduo/net/UdpClient.h"
 #include "jpmuduo/net/EventLoop.h"
+#include "jpmuduo/net/EventLoopThread.h"
 #include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/Buffer.h"
 
 #include <iostream>
 #include <string>
-#include <thread>
 #include <chrono>
 
 using namespace jpmuduo;
@@ -19,10 +19,13 @@ int main() {
     // Test 1: UdpServer echo
     std::cout << "=== Test 1: UdpServer echo ===" << std::endl;
 
-    EventLoop loop;
+    // EventLoop 线程绑定：EventLoopThread 在子线程创建并运行 loop，
+    // 主线程通过 runInLoop 跨线程投递（符合 muduo 线程模型）
+    EventLoopThread serverLoopThread;
+    EventLoop* loop = serverLoopThread.startLoop();
     InetAddress listenAddr(9876);
 
-    UdpServer server(&loop, listenAddr, "udp-echo");
+    UdpServer server(loop, listenAddr, "udp-echo");
     server.setMessageCallback([&server](Buffer* buf, TimeStamp ts, const InetAddress& sender) {
         std::string msg = buf->retrieveAllAsString();
         std::cout << "Server received: \"" << msg << "\" from " << sender.toIpPort() << std::endl;
@@ -31,32 +34,23 @@ int main() {
     });
     server.start();
 
-    // Run the server in a separate thread
-    std::thread serverThread([&loop]() {
-        loop.loop();
-    });
-
     // Give the server a moment to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Test 2: UdpClient sendTo + recvfrom
     std::cout << "\n=== Test 2: UdpClient send/recv ===" << std::endl;
 
-    EventLoop clientLoop;
+    EventLoopThread clientLoopThread;
+    EventLoop* clientLoop = clientLoopThread.startLoop();
     InetAddress serverAddr(9876);
-    UdpClient client(&clientLoop, serverAddr, "udp-client");
+    UdpClient client(clientLoop, serverAddr, "udp-client");
 
     bool gotResponse = false;
     client.setMessageCallback([&](Buffer* buf, TimeStamp ts, const InetAddress& sender) {
         std::string msg = buf->retrieveAllAsString();
         std::cout << "Client received: \"" << msg << "\" from " << sender.toIpPort() << std::endl;
         gotResponse = true;
-        clientLoop.quit();
-    });
-
-    // Run client loop in another thread
-    std::thread clientThread([&clientLoop]() {
-        clientLoop.loop();
+        clientLoop->quit();
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -74,12 +68,10 @@ int main() {
         std::cout << "\n*** ALL TESTS PASSED ***" << std::endl;
     } else {
         std::cout << "\n*** TEST FAILED: No response received ***" << std::endl;
-        clientLoop.quit();
+        clientLoop->quit();
     }
 
-    loop.quit();
-    clientThread.join();
-    serverThread.join();
-
+    // EventLoopThread 析构时 quit + join
+    loop->quit();
     return gotResponse ? 0 : 1;
 }

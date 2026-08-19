@@ -40,8 +40,15 @@ UdpServer::UdpServer(EventLoop* loop, const InetAddress& listenAddr, const std::
 
 UdpServer::~UdpServer() {
     if (started_.load()) {
-        channel_->disableAll();
-        channel_->remove();
+        // 析构可能发生在任意线程（如主线程），而 Channel 操作必须在线程
+        // 绑定的 loop 线程内执行：把 Channel 所有权移交到 loop 线程任务，
+        // 执行完 disableAll/remove 后释放，避免裸指针悬空
+        Channel* ch = channel_.release();
+        loop_->runInLoop([ch]() {
+            ch->disableAll();
+            ch->remove();
+            delete ch;
+        });
     }
 }
 

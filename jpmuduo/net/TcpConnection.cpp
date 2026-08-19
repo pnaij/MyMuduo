@@ -5,6 +5,7 @@
 #include "jpmuduo/net/TcpConnection.h"
 #include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/Socket.h"
+#include "jpmuduo/net/SocketsOps.h"
 #include "jpmuduo/net/Channel.h"
 #include "jpmuduo/net/EventLoop.h"
 
@@ -57,6 +58,19 @@ TcpConnection::TcpConnection(EventLoop *loop, const std::string &nameArg, int so
 TcpConnection::~TcpConnection() {
     LOG_INFO << "TcpConnection::dtor[" << name_ << "] at fd=" << channel_->fd()
              << " state=" << static_cast<int>(state_);
+    // 析构时连接必须已断开（否则说明上层未正确回收连接）
+    assert(state_ == kDisconnected);
+}
+
+bool TcpConnection::getTcpInfo(struct tcp_info* tcpi) const {
+    return socket_->getTcpInfo(tcpi);
+}
+
+std::string TcpConnection::getTcpInfoString() const {
+    char buf[1024];
+    buf[0] = '\0';
+    socket_->getTcpInfoString(buf, sizeof buf);
+    return buf;
 }
 
 void TcpConnection::send(const std::string &buf) {
@@ -64,9 +78,10 @@ void TcpConnection::send(const std::string &buf) {
         if(loop_->isInLoopThread()) {
             sendInLoop(buf.c_str(), buf.size());
         }else {
-            // copy buf to avoid dangling pointer on cross-thread call
-            loop_->runInLoop([this, copy = std::string(buf)]() {
-                sendInLoop(copy.data(), copy.size());
+            // copy buf to avoid dangling pointer on cross-thread call；
+            // shared_from_this 保证对象活到任务执行完（裸 this 有延迟窗口悬空风险）
+            loop_->runInLoop([self = shared_from_this(), copy = std::string(buf)]() {
+                self->sendInLoop(copy.data(), copy.size());
             });
         }
     }
@@ -76,10 +91,13 @@ void TcpConnection::send(Buffer* buf) {
     if(state_ == kConnected) {
         if(loop_->isInLoopThread()) {
             sendInLoop(buf);
+            buf->retrieveAll();  // 数据已被 TcpConnection 取走（swap 语义）
         }else {
-            loop_->runInLoop([this, buf]() mutable {
-                sendInLoop(buf);
-            });
+            // 跨线程必须拷贝：Buffer 属于调用者，指针传给另一线程是悬空风险
+            loop_->runInLoop(
+                    [self = shared_from_this(), msg = buf->retrieveAllAsString()]() {
+                        self->sendInLoop(msg.data(), msg.size());
+                    });
         }
     }
 }
@@ -93,8 +111,9 @@ void TcpConnection::send(const void* data, size_t len) {
         if(loop_->isInLoopThread()) {
             sendInLoop(data, len);
         }else {
-            loop_->runInLoop([this, copy = std::string(static_cast<const char*>(data), len)]() {
-                sendInLoop(copy.data(), copy.size());
+            loop_->runInLoop([self = shared_from_this(),
+                              copy = std::string(static_cast<const char*>(data), len)]() {
+                self->sendInLoop(copy.data(), copy.size());
             });
         }
     }
@@ -105,13 +124,16 @@ void TcpConnection::sendInLoop(const void *message, size_t len) {
     size_t remaining = len;
     bool faultError = false;
 
-    if(state_ == kDisconnecting) {
+    // 仅 kDisconnected 拒绝写入：kDisconnecting 是"数据还没发完"的半关闭
+    // 状态，此时必须继续写（写完 handleWrite 才 shutdown），
+    // 原实现检查 kDisconnecting 会错误丢弃最后的业务数据
+    if(state_ == kDisconnected) {
         LOG_ERROR << "disconnected, give up writing!";
         return ;
     }
 
     if(!channel_->isWriting() && outputBuffer_.readableBytes() == 0) {
-        nwrote = ::write(channel_->fd(), message, len);
+        nwrote = sockets::write(channel_->fd(), message, len);
         if(nwrote >= 0) {
             remaining = len - nwrote;
             if(remaining == 0 && writeCompleteCallback_) {
@@ -150,8 +172,11 @@ void TcpConnection::sendInLoop(const void *message, size_t len) {
 void TcpConnection::shutdown() {
     if(state_ == kConnected) {
         setState(kDisconnecting);
+        // 用 shared_from_this() 而非裸 this：闭包入队到执行之间存在延迟窗口，
+        // 若期间对象被析构（如调用方退出），裸 this 会悬空（原始 muduo 的
+        // FIXME: shared_from_this()? 即指此问题）；强引用保证对象活到任务执行完
         loop_->runInLoop(
-                std::bind(&TcpConnection::shutdownInLoop, this)
+                std::bind(&TcpConnection::shutdownInLoop, shared_from_this())
                 );
     }
 }
@@ -163,6 +188,35 @@ void TcpConnection::sendInLoop(Buffer* buf) {
 void TcpConnection::shutdownInLoop() {
     if(!channel_->isWriting()) {
         socket_->shutdownWrite();
+    }
+}
+
+void TcpConnection::forceClose() {
+    // 强关：模拟"读到 0 字节"，立即走 handleClose 全关
+    // （对比 shutdown：优雅半关，等数据发完再发 FIN）
+    if(state_ == kConnected || state_ == kDisconnecting) {
+        setState(kDisconnecting);
+        // queueInLoop 而非 runInLoop：forceCloseInLoop 会触发用户回调
+        // 与 closeCallback（可能析构对象），必须延迟到当前事件处理完成，
+        // 避免在调用栈中同步重入；shared_from_this 保证对象活到任务执行完
+        loop_->queueInLoop(std::bind(&TcpConnection::forceCloseInLoop, shared_from_this()));
+    }
+}
+
+void TcpConnection::forceCloseWithDelay(double seconds) {
+    if(state_ == kConnected || state_ == kDisconnecting) {
+        setState(kDisconnecting);
+        // 定时器回调用弱引用：到期时对象若已析构则不执行
+        // （定时器与队列不同——回调可能永远不跑，弱引用防悬空）
+        loop_->runAfter(seconds,
+                        makeWeakCallback(shared_from_this(), &TcpConnection::forceClose));
+    }
+}
+
+void TcpConnection::forceCloseInLoop() {
+    loop_->assertInLoopThread();
+    if(state_ == kConnected || state_ == kDisconnecting) {
+        handleClose();
     }
 }
 
@@ -189,6 +243,8 @@ void TcpConnection::stopRead() {
 }
 
 void TcpConnection::connectEstablished() {
+    // 防止重复调用（原始 muduo 断言一致）
+    assert(state_ == kConnecting);
     setState(kConnected);
     channel_->tie(shared_from_this());
     channel_->enableReading();
@@ -254,9 +310,24 @@ void TcpConnection::handleWrite() {
     }
 }
 
+const char* TcpConnection::stateToString() const {
+    switch (state_) {
+    case kDisconnected:
+        return "kDisconnected";
+    case kConnecting:
+        return "kConnecting";
+    case kConnected:
+        return "kConnected";
+    case kDisconnecting:
+        return "kDisconnecting";
+    default:
+        return "unknown state";
+    }
+}
+
 void TcpConnection::handleClose() {
     LOG_INFO << "TcpConnection::handleClose fd=" << channel_->fd()
-             << " state=" << static_cast<int>(state_);
+             << " state=" << stateToString();
     setState(kDisconnected);
     channel_->disableAll();
 
@@ -270,17 +341,12 @@ void TcpConnection::handleClose() {
 }
 
 void TcpConnection::handleError() {
-    int optVal;
-    socklen_t optLen = sizeof(optVal);
-    int err = 0;
-    if(::getsockopt(channel_->fd(), SOL_SOCKET, SO_ERROR, &optVal, &optLen) < 0) {
-        err = errno;
-    }else {
-        err = optVal;
-    }
+    int err = sockets::getSocketError(channel_->fd());
 
     LOG_ERROR << "TcpConnection::handleError name:" << name_ << " - SO_ERROR:" << err;
-    handleClose();
+    // 仅记录错误，不主动 handleClose（原始 muduo 语义）：
+    // 多数错误（如对端 RST）最终会以 read 0 字节/POLLERR 走 handleClose，
+    // 主动关闭可能过早断开仍可挽救的连接
 }
 
 }  // namespace jpmuduo

@@ -5,6 +5,7 @@
 #include "jpmuduo/net/TcpServer.h"
 #include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/TcpConnection.h"
+#include "jpmuduo/net/SocketsOps.h"
 
 #include <strings.h>
 #include <functional>
@@ -66,13 +67,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr) {
     LOG_INFO << "TcpServer::newConnection [" << name_ << "] - new connection ["
              << connName << "] from " << peerAddr.toIpPort();
 
-    sockaddr_in local;
-    ::bzero(&local, sizeof(local));
-    socklen_t addrlen = sizeof(local);
-    if(::getsockname(sockfd, (sockaddr*)&local, &addrlen) < 0) {
-        LOG_SYSERR << "sockets::getLocalAddr";
-    }
-    InetAddress localAddr(local);
+    InetAddress localAddr(sockets::getLocalAddr(sockfd));
 
     TcpConnectionPtr conn(new TcpConnection(
             ioLoop,
@@ -86,7 +81,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr) {
     conn->setConnectionCallback(connectionCallback_);
     conn->setMessageCallback(messageCallback_);
     conn->setWriteCompleteCallback(writeCompleteCallback_);
-    conn->setHighWaterMarkCallback(highWaterMarkCallback_);
+    conn->setHighWaterMarkCallback(highWaterMarkCallback_, highWaterMark_);
 
     conn->setCloseCallback(
             std::bind(&TcpServer::removeConnection, this, std::placeholders::_1)

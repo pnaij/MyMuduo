@@ -48,7 +48,6 @@ private:
     void retry(int sockfd);
     int removeAndResetChannel();
     void resetChannel();
-    bool isSelfConnect(int sockfd);
 
     EventLoop* loop_;
     InetAddress serverAddr_;

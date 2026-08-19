@@ -6,8 +6,8 @@
 #include "jpmuduo/base/Logging.h"
 #include "jpmuduo/net/EventLoop.h"
 #include "jpmuduo/net/Buffer.h"
+#include "jpmuduo/net/SocketsOps.h"
 
-#include <sys/socket.h>
 #include <errno.h>
 
 namespace jpmuduo {
@@ -52,8 +52,8 @@ void UdpClient::connect() {
     if (connected_.exchange(true)) return;
 
     loop_->runInLoop([this]() {
-        sockaddr_in addr = *serverAddr_.getSockAddr();
-        int ret = ::connect(socket_->fd(), (const sockaddr*)&addr, sizeof(addr));
+        int ret = sockets::connect(socket_->fd(),
+                                   sockets::sockaddr_cast(serverAddr_.getSockAddr()));
         if (ret < 0) {
             LOG_SYSERR << "UdpClient[" << name_ << "] connect error";
             connected_ = false;
@@ -68,10 +68,15 @@ void UdpClient::connect() {
 void UdpClient::disconnect() {
     if (!connected_.exchange(false)) return;
 
-    loop_->runInLoop([this]() {
-        channel_->disableAll();
-        channel_->remove();
-        LOG_INFO << "UdpClient[" << name_ << "] disconnected, fd=" << socket_->fd();
+    // 与 UdpServer 析构同理：Channel 所有权移交到 loop 线程任务，
+    // 避免对象析构后挂起任务悬空（裸 this/裸 channel 均为 UB）
+    int fd = socket_->fd();
+    Channel* ch = channel_.release();
+    loop_->runInLoop([ch, fd]() {
+        ch->disableAll();
+        ch->remove();
+        delete ch;
+        LOG_INFO << "UdpClient disconnected, fd=" << fd;
     });
 }
 

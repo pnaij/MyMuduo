@@ -34,7 +34,11 @@ public:
     void setConnectionCallback(const ConnectionCallback& cb) { connectionCallback_ = cb; }
     void setMessageCallback(const MessageCallback& cb) { messageCallback_ = cb; }
     void setWriteCompleteCallback(const WriteCompleteCallback& cb) { writeCompleteCallback_ = cb; }
-    void setHighWaterMarkCallback(const HighWaterMarkCallback& cb) { highWaterMarkCallback_ = cb; }
+    // 高水位回调 + 水位一起设置（与 TcpConnection/TcpServer 签名一致）
+    void setHighWaterMarkCallback(const HighWaterMarkCallback& cb, size_t highWaterMark) {
+        highWaterMarkCallback_ = cb;
+        highWaterMark_ = highWaterMark;
+    }
 
     EventLoop* getLoop() const { return loop_; }
     const std::string& name() const { return name_; }
@@ -50,6 +54,7 @@ private:
     MessageCallback messageCallback_;
     WriteCompleteCallback writeCompleteCallback_;
     HighWaterMarkCallback highWaterMarkCallback_;
+    size_t highWaterMark_ = 64 * 1024 * 1024;
     bool retry_;
     int nextConnId_;
     mutable std::mutex mutex_;

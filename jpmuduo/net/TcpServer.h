@@ -39,7 +39,10 @@ public:
     void setConnectionCallback(const ConnectionCallback& cb) { connectionCallback_ = cb; }
     void setMessageCallback(const MessageCallback& cb) { messageCallback_ = cb; }
     void setWriteCompleteCallback(const WriteCompleteCallback& cb) { writeCompleteCallback_ = cb; }
-    void setHighWaterMarkCallback(const HighWaterMarkCallback& cb) { highWaterMarkCallback_ = cb; }
+    void setHighWaterMarkCallback(const HighWaterMarkCallback& cb, size_t highWaterMark) {
+        highWaterMarkCallback_ = cb;
+        highWaterMark_ = highWaterMark;
+    }
 
     void setThreadNum(int numThreads);
 
@@ -65,6 +68,8 @@ private:
     MessageCallback messageCallback_;
     WriteCompleteCallback writeCompleteCallback_;
     HighWaterMarkCallback highWaterMarkCallback_;
+    // 默认与 TcpConnection 构造一致（64MB），未调用 setter 时也有合理值
+    size_t highWaterMark_ = 64 * 1024 * 1024;
 
     ThreadinitCallback threadinitCallback_;
 

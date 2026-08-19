@@ -6,6 +6,7 @@
 #define JPMUDUO_TIMERQUEUE_H
 
 #include "jpmuduo/net/Timer.h"
+#include "jpmuduo/net/TimerId.h"
 #include "jpmuduo/net/Channel.h"
 #include "jpmuduo/base/noncopyable.h"
 

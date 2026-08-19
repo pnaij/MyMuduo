@@ -4,8 +4,11 @@
 
 #include "jpmuduo/net/Socket.h"
 #include "jpmuduo/base/Logging.h"
+#include "jpmuduo/base/Types.h"  // memZero
 #include "jpmuduo/net/InetAddress.h"
+#include "jpmuduo/net/SocketsOps.h"
 
+#include <stdio.h>  // snprintf
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -16,15 +19,44 @@
 namespace jpmuduo {
 
 Socket::~Socket() {
-    close(sockfd_);
+    sockets::close(sockfd_);
+}
+
+bool Socket::getTcpInfo(struct tcp_info* tcpi) const
+{
+    socklen_t len = sizeof(*tcpi);
+    memZero(tcpi, len);
+    return ::getsockopt(sockfd_, SOL_TCP, TCP_INFO, tcpi, &len) == 0;
+}
+
+bool Socket::getTcpInfoString(char* buf, int len) const
+{
+    struct tcp_info tcpi;
+    bool ok = getTcpInfo(&tcpi);
+    if (ok)
+    {
+        snprintf(buf, len, "unrecovered=%u "
+                 "rto=%u ato=%u snd_mss=%u rcv_mss=%u "
+                 "lost=%u retrans=%u rtt=%u rttvar=%u "
+                 "sshthresh=%u cwnd=%u total_retrans=%u",
+                 tcpi.tcpi_retransmits,  // Number of unrecovered [RTO] timeouts
+                 tcpi.tcpi_rto,          // Retransmit timeout in usec
+                 tcpi.tcpi_ato,          // Predicted tick of soft clock in usec
+                 tcpi.tcpi_snd_mss,
+                 tcpi.tcpi_rcv_mss,
+                 tcpi.tcpi_lost,         // Lost packets
+                 tcpi.tcpi_retrans,      // Retransmitted packets out
+                 tcpi.tcpi_rtt,          // Smoothed round trip time in usec
+                 tcpi.tcpi_rttvar,       // Medium deviation
+                 tcpi.tcpi_snd_ssthresh,
+                 tcpi.tcpi_snd_cwnd,
+                 tcpi.tcpi_total_retrans);  // Total retransmits for entire connection
+    }
+    return ok;
 }
 
 int Socket::createTcpSocket() {
-    int sockfd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-    if (sockfd < 0) {
-        LOG_SYSFATAL << "create TCP socket error";
-    }
-    return sockfd;
+    return sockets::createNonblockingOrDie(AF_INET);
 }
 
 int Socket::createUdpSocket() {
@@ -36,36 +68,26 @@ int Socket::createUdpSocket() {
 }
 
 void Socket::bindAddress(const InetAddress &localaddr) {
-    if(::bind(sockfd_, (sockaddr*)localaddr.getSockAddr(), sizeof(sockaddr_in)) != 0) {
-        LOG_SYSFATAL << "bind socket:" << sockfd_ << " fail";
-    }
+    sockets::bindOrDie(sockfd_, sockets::sockaddr_cast(localaddr.getSockAddr()));
 }
 
 void Socket::listen() {
-    if(::listen(sockfd_, 65535) != 0) {
-        LOG_SYSFATAL << "listen sockfd:" << sockfd_ << " fail";
-    }
+    sockets::listenOrDie(sockfd_);
 }
 
 int Socket::accept(InetAddress *peeraddr) {
     sockaddr_in addr;
-    socklen_t len = sizeof(addr);
     bzero(&addr, sizeof(addr));
-    int connfd = ::accept4(sockfd_, (sockaddr*)&addr, &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
+    int connfd = sockets::accept(sockfd_, &addr);
     if(connfd >= 0) {
-        LOG_INFO << "accept success";
         peeraddr->setSockAddr(addr);
-    }else {
-        LOG_SYSERR << "accept failed on sockfd:" << sockfd_;
     }
 
     return connfd;
 }
 
 void Socket::shutdownWrite() {
-    if(::shutdown(sockfd_, SHUT_WR) < 0) {
-        LOG_SYSERR << "shutdownWrite error";
-    }
+    sockets::shutdownWrite(sockfd_);
 }
 
 void Socket::setTcpNoDelay(bool on) {

@@ -22,7 +22,8 @@ public:
 
         server_.setHighWaterMarkCallback(
                 std::bind(&EchoServer::onHighWaterMark, this,
-                          std::placeholders::_1, std::placeholders::_2));
+                          std::placeholders::_1, std::placeholders::_2),
+                64 * 1024 * 1024);  // 高水位 64MB（与默认一致）
 
         server_.setWriteCompleteCallback(
                 std::bind(&EchoServer::onWriteComplete, this,
